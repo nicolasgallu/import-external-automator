@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 import time
+import google.auth
 from google.auth import default
 from google.auth.transport.requests import Request
 from app.utils.logger import logger
@@ -10,12 +11,30 @@ from app.settings.config import SCOPES, PARENT_FOLDER_ID, MAX_CONCURRENT_TASKS
 progress_counter = 0
 
 async def get_access_token():
-    """Obtiene el token de acceso de forma asíncrona (operación breve)"""
-    # Nota: Asegúrate de que SCOPES sea una lista en tu config o mantenlo como [SCOPES]
-    creds = default(scopes=[SCOPES])
-    auth_req = Request()
-    creds.refresh(auth_req)
-    return creds.token
+    """
+    Obtiene el token de acceso de forma automatica.
+    Funciona via Application Default Credentials (ADC) tanto en local como en GCP.
+    """
+    try:
+        # google.auth.default() devuelve una tupla (credentials, project_id)
+        # Desempaquetamos la tupla para obtener el objeto de credenciales
+        creds, project = google.auth.default(scopes=[SCOPES])
+        
+        auth_req = Request()
+        
+        # Ahora sí, llamamos a refresh sobre el objeto 'creds'
+        creds.refresh(auth_req)
+        
+        if not creds.token:
+            raise Exception("No se pudo obtener el token de acceso desde el entorno.")
+            
+        logger.info("Credenciales obtenidas exitosamente mediante ADC.")
+        return creds.token
+
+    except Exception as e:
+        logger.error(f"Error critico al obtener credenciales de Google: {str(e)}")
+        raise
+
 
 async def create_folder_task(session, item_id, token, semaphore, total_items):
     """Tarea individual para crear una carpeta en Drive con tracking de progreso"""
