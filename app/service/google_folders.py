@@ -20,6 +20,8 @@ async def get_access_token():
         # Desempaquetamos la tupla para obtener el objeto de credenciales
         creds, project = google.auth.default(scopes=[SCOPES])
         
+        logger.info(f"Identidad actual del Job: {creds.service_account_email}")
+
         auth_req = Request()
         
         # Ahora sí, llamamos a refresh sobre el objeto 'creds'
