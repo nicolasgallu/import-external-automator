@@ -19,8 +19,6 @@ async def get_access_token():
         # google.auth.default() devuelve una tupla (credentials, project_id)
         # Desempaquetamos la tupla para obtener el objeto de credenciales
         creds, project = google.auth.default(scopes=[SCOPES])
-        
-        logger.info(f"Identidad actual del Job: {creds.service_account_email}")
 
         auth_req = Request()
         
