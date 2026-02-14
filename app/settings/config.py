@@ -16,4 +16,4 @@ SCOPES=os.getenv("SCOPES")
 PARENT_FOLDER_ID=os.getenv("PARENT_FOLDER_ID")
 MAX_CONCURRENT_TASKS=int(os.getenv("MAX_CONCURRENT_TASKS"))
 
-RUN_FOLDERS=int(os.getenv("run_folders"))
+RUN_FOLDERS=int(os.getenv("RUN_FOLDERS"))
