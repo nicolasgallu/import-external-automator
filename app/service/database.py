@@ -108,8 +108,8 @@ def truncate_meli_item_status(product_status):
         logger.info("Starting Data Load")
         conn.execute(
             text("""
-                INSERT INTO mercadolibre.product_status (meli_id, status, reason, remedy, updated_at)
-                VALUES (:meli_id, :status, :reason, :remedy, :updated_at)
+                INSERT INTO mercadolibre.product_status (meli_id, stock, status, reason, remedy, updated_at)
+                VALUES (:meli_id, :stock, :status, :reason, :remedy, :updated_at)
             """),
             product_status
         )
