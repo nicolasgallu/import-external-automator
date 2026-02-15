@@ -1,17 +1,17 @@
 import asyncio
 from app.service.meli_api import obtain_items
-from app.service.database import truncate_meli_item_status, get_items_with_stock, load_item_drive_url
+from app.service.database import get_items_without_folder, load_item_folder_url, truncate_items_data
 from app.service.google_folders import run_drive_automation 
-from app.settings.config import RUN_FOLDERS
+from app.settings.config import RUN_FOLDERS, RUN_PROCEDURES
 
-product_status = obtain_items() #obtain all items status.
-truncate_meli_item_status(product_status) #overwrite the status in DB.
+items_data = obtain_items()
+truncate_items_data(items_data, RUN_PROCEDURES)
 
 if RUN_FOLDERS == 1:
-    items_list = get_items_with_stock() #get items id for ones with stock and without drive url.
+    items_list = get_items_without_folder()
     if items_list:
-        data_para_db = asyncio.run(run_drive_automation(items_list)) #creating folders and returning drive url.
-        load_item_drive_url(data_para_db) #writting in db drive urls.
-
+        data_para_db = asyncio.run(run_drive_automation(items_list))
+        print(data_para_db)
+        load_item_folder_url(data_para_db)
 else:
     None
