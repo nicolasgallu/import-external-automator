@@ -8,10 +8,8 @@ def obtain_items():
     """
     Retorna el estado completo de los itmes publicados: meli_id, stock, status, reason, remedy y updated_at.
     """
-    #token = meli_secrets()
-    token = 'APP_USR-4651139190112197-021508-1f9f3432eca1d09d711e96c39b653092-47015668'
+    token = meli_secrets()
     headers = {'Authorization': f'Bearer {token}'}
-    final_results = []
 
     async def fetch_json(session, url, params=None):
         async with session.get(url, params=params) as resp:
@@ -66,9 +64,9 @@ def obtain_items():
                    if not scroll_id:
                        break
                    
-                   # Opcional: Log de progreso para listas muy grandes
-                   if len(item_ids) % 1000 == 0:
-                       logger.info(f"Recuperados {len(item_ids)} IDs...")
+                
+                
+               logger.info(f"Recuperados {len(item_ids)} IDs...")
 
                logger.info(f"Total de IDs recuperados: {len(item_ids)}. Iniciando análisis de publicaciones...")
 
@@ -94,6 +92,7 @@ def obtain_items():
                        item_id = body.get('id')
                        status = body.get('status')
                        stock = body.get('available_quantity', 0)
+                       product_name = body.get('title')
                        
                        reason = "None"
                        remedy = "None"
@@ -116,6 +115,7 @@ def obtain_items():
 
                        final_results.append({
                            "meli_id": item_id,
+                           "product_name": product_name,
                            "stock": stock,
                            "status": status,
                            "reason": reason,

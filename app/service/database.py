@@ -30,8 +30,8 @@ def truncate_items_data(product_status, run_procedure):
         logger.info("Starting Data Load")
         conn.execute(
             text(f"""
-                INSERT INTO {SCHMA_MELI}.product_status (meli_id, stock, status, reason, remedy, updated_at)
-                VALUES (:meli_id, :stock, :status, :reason, :remedy, :updated_at)
+                INSERT INTO {SCHMA_MELI}.product_status (meli_id, product_name, stock, status, reason, remedy, updated_at)
+                VALUES (:meli_id, :product_name, :stock, :status, :reason, :remedy, :updated_at)
             """),
             product_status
         )
