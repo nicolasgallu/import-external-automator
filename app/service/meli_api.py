@@ -118,8 +118,8 @@ def obtain_items():
                            "product_name": product_name,
                            "stock": stock,
                            "status": status,
-                           "reason": reason,
-                           "remedy": remedy,
+                           "reason": reason[:255],
+                           "remedy": remedy[:255],
                            "updated_at": current_time
                        })
 

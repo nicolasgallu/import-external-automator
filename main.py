@@ -5,7 +5,8 @@ from app.service.google_folders import run_drive_automation
 from app.settings.config import RUN_FOLDERS, RUN_PROCEDURES
 
 items_data = obtain_items()
-truncate_items_data(items_data, RUN_PROCEDURES)
+if items_data:
+    truncate_items_data(items_data, RUN_PROCEDURES)
 
 if RUN_FOLDERS == 1:
     items_list = get_items_without_folder()
