@@ -109,11 +109,11 @@ def obtain_items():
                            if status_code == 200 and response_mod:
                                # response_mod suele ser una lista
                                wordings = response_mod[0].get('wordings', []) if isinstance(response_mod, list) else []
-                               if len(wordings) > 0:
+                               if wordings and len(wordings) > 0:
                                    reason = wordings[0].get('value', 'No reason provided')
-                               if len(wordings) > 1:
+                               if wordings and len(wordings) > 1:
                                    remedy = wordings[1].get('value', 'No remedy provided')
-
+                                   
                        final_results.append({
                            "meli_id": item_id,
                            "product_name": product_name,
