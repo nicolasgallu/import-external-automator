@@ -8,7 +8,7 @@ def obtain_items():
     """
     Retorna el estado completo de los itmes publicados: meli_id, stock, status, reason, remedy y updated_at.
     """
-    #token = meli_secrets()
+    token = meli_secrets()
     headers = {'Authorization': f'Bearer {token}'}
 
     async def fetch_json(session, url, params=None):
