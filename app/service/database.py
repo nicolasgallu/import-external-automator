@@ -1,7 +1,7 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, insert
 from google.cloud.sql.connector import Connector
 from app.utils.logger import logger
-from app.settings.config import INSTANCE_DB, USER_DB, PASSWORD_DB, NAME_DB, SCHMA_FOLDER, SCHMA_MELI
+from app.settings.config import INSTANCE_DB, USER_DB, PASSWORD_DB, NAME_DB, SCHMA_FOLDER, SCHMA_MELI, SCHMA_APP
 
 def getconn():
     connector = Connector() 
@@ -40,6 +40,39 @@ def truncate_items_data(product_status, run_procedure):
             logger.info("Running Procedures.")
             conn.execute(text(f"""CALL {SCHMA_FOLDER}.update_meli_status()"""))
             logger.info("Procedures Completed.")
+
+def get_item_actives():
+    """"""
+    with engine.begin() as conn:
+        logger.info("Getting active published products")
+        result = conn.execute(
+            text(f"""SELECT distinct meli_id from {SCHMA_APP}.product_catalog_sync 
+                WHERE status = 'active' and meli_id is not null""")
+        )
+        data = [dict(row).get('meli_id') for row in result.mappings()]
+        return data
+
+def load_item_performance(data):
+    """"""
+    with engine.begin() as conn:
+        logger.info("Starting load of items performance")
+        conn.execute(
+            text(f"""
+                INSERT INTO {SCHMA_MELI}.performance_raw 
+                (meli_id, entity_type, score, level, level_wording, calculated_at, updated_at, buckets)
+                VALUES (:meli_id, :entity_type, :score, :level, :level_wording, :calculated_at, :updated_at, :buckets) 
+                ON DUPLICATE KEY UPDATE 
+                entity_type = VALUES(entity_type),
+                score = VALUES(score),
+                level = VALUES(level),
+                level_wording = VALUES(level_wording),
+                calculated_at = VALUES(calculated_at),
+                updated_at = VALUES(updated_at),
+                buckets = VALUES(buckets)
+            """), data
+        )
+        conn.execute(text(f"CALL {SCHMA_MELI}.refresh_performance_data()"))
+        logger.info("Load Completed")
 
 def get_items_without_folder():
     """"""

@@ -1,12 +1,15 @@
 import asyncio
 from app.service.meli_api import obtain_items
 from app.service.database import get_items_without_folder, load_item_folder_url, truncate_items_data
+from app.service.meli_performance import get_performance
 from app.service.google_folders import run_drive_automation 
 from app.settings.config import RUN_FOLDERS, RUN_PROCEDURES
 
 items_data = obtain_items()
 if items_data:
     truncate_items_data(items_data, RUN_PROCEDURES)
+
+get_performance()
 
 if RUN_FOLDERS == 1:
     items_list = get_items_without_folder()
