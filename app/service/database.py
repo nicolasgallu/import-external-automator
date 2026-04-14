@@ -47,7 +47,7 @@ def get_item_actives():
         logger.info("Getting active published products")
         result = conn.execute(
             text(f"""SELECT distinct meli_id from {SCHMA_APP}.product_catalog_sync 
-                WHERE status = 'active' and meli_id is not null""")
+                WHERE status in ('active','under_review') and meli_id is not null""")
         )
         data = [dict(row).get('meli_id') for row in result.mappings()]
         return data
