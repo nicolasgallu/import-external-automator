@@ -12,11 +12,11 @@ def get_performance():
     access_token = meli_secrets()
     headers = {'Authorization': f'Bearer {access_token}'}
     published_items = get_item_actives()
-
     items = []
 
     headers = {'Authorization': f'Bearer {access_token}'}
     for item_id in published_items:
+        print(item_id)
         url = f"https://api.mercadolibre.com/item/{item_id}/performance"
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
