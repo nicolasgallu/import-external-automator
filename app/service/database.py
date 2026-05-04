@@ -81,7 +81,7 @@ def get_items_without_folder():
         result = conn.execute(
             text(f"""
                 SELECT id FROM {SCHMA_FOLDER}.product_catalog_sync
-                WHERE stock > 0 and drive_url is null;
+                WHERE drive_url is null;
             """)
         )
         data = [dict(row) for row in result.mappings()]
