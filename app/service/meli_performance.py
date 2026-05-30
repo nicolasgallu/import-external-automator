@@ -22,9 +22,9 @@ def get_performance():
 
         calculated_at = response.json().get("calculated_at") 
         if '.' in str(calculated_at):
-            datetime.strptime(str(calculated_at),"%Y-%m-%dT%H:%M:%S.%fZ")
+            datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S.%fZ")
         elif calculated_at is not None:
-            datetime.strptime(str(calculated_at),"%Y-%m-%dT%H:%M:%S%fZ")
+            datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S%fZ")
         else:
             calculated_at = datetime.now()
 
