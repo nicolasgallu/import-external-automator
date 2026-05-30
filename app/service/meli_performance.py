@@ -34,7 +34,7 @@ def get_performance():
             "score": data.get("score"),
             "level": data.get("level"),
             "level_wording": data.get("level_wording"),
-            "calculated_at": calculated_at,
+            "calculated_at": datetime.now() if calculated_at is None else calculated_at,
             "updated_at": datetime.now(),
             "buckets": json.dumps(data.get("buckets")) 
             }
