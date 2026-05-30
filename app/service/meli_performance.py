@@ -19,6 +19,13 @@ def get_performance():
         print(item_id)
         url = f"https://api.mercadolibre.com/item/{item_id}/performance"
         response = requests.get(url, headers=headers)
+
+        calculated_at = str(data.get("calculated_at"))
+        if '.' in calculated_at:
+            datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S%fZ")
+
         if response.status_code == 200:
             data = response.json()
             clean = {
@@ -27,7 +34,7 @@ def get_performance():
             "score": data.get("score"),
             "level": data.get("level"),
             "level_wording": data.get("level_wording"),
-            "calculated_at": datetime.strptime(str(data.get("calculated_at")),"%Y-%m-%dT%H:%M:%S.%fZ"),
+            "calculated_at": calculated_at,
             "updated_at": datetime.now(),
             "buckets": json.dumps(data.get("buckets")) 
             }
