@@ -23,8 +23,10 @@ def get_performance():
         calculated_at = str(response.json().get("calculated_at"))
         if '.' in calculated_at:
             datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S.%fZ")
-        else:
+        elif calculated_at is not None:
             datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S%fZ")
+        else:
+            calculated_at = datetime.now()
 
         if response.status_code == 200:
             data = response.json()
@@ -34,7 +36,7 @@ def get_performance():
             "score": data.get("score"),
             "level": data.get("level"),
             "level_wording": data.get("level_wording"),
-            "calculated_at": datetime.now() if calculated_at is None else calculated_at,
+            "calculated_at": calculated_at,
             "updated_at": datetime.now(),
             "buckets": json.dumps(data.get("buckets")) 
             }
