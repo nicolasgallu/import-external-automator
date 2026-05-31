@@ -21,11 +21,10 @@ def get_performance():
         response = requests.get(url, headers=headers)
 
         calculated_at = response.json().get("calculated_at")
-        logger.info(calculated_at)
         if '.' in str(calculated_at):
-            datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S.%fZ")
+            calculated_at = datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S.%fZ")
         elif calculated_at is not None:
-            datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S%fZ")
+            calculated_at = datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S%fZ")
         else:
             calculated_at = datetime.now()
 
