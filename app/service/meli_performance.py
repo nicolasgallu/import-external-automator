@@ -20,7 +20,8 @@ def get_performance():
         url = f"https://api.mercadolibre.com/item/{item_id}/performance"
         response = requests.get(url, headers=headers)
 
-        calculated_at = response.json().get("calculated_at") 
+        calculated_at = response.json().get("calculated_at")
+        logger.info(calculated_at)
         if '.' in str(calculated_at):
             datetime.strptime(calculated_at,"%Y-%m-%dT%H:%M:%S.%fZ")
         elif calculated_at is not None:
