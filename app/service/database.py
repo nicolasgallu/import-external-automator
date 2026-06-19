@@ -21,6 +21,62 @@ engine = create_engine(
         max_overflow=2,
     )
 
+def get_method(data):
+    """"""
+    with engine.begin() as conn:
+
+        q_columns = ', '.join(data.get('q_columns'))
+        q_from = data.get('q_from')
+        q_join = data.get('q_join', '')
+        q_where  = data.get('q_where', '')
+        q_limit  = data.get('q_limit', '')
+
+        result = conn.execute(
+            text(f"""
+                SELECT 
+                {q_columns} 
+                {q_from} 
+                {q_join} 
+                {q_where} 
+                {q_limit}
+                """)
+            )
+        data = [dict(row) for row in result.mappings()]
+        logger.info("Data extraction completed.")
+        return data
+ 
+def load_data(fields:str, data:list, stage:str):
+    """"""
+    try:
+        with engine.begin() as conn:
+            to_update = ""
+            to_update_conflict = ""
+            fields_aux = fields.split(',')
+            for i in fields_aux:
+                if i =='id':
+                    to_update+= f":{i.strip()}, "
+                    continue
+                if i == fields_aux[-1]:
+                    to_update_conflict+= f"{i} = values({i.strip()})"
+                    to_update+= f":{i.strip()}"
+                else:
+                    to_update_conflict+= f"{i} = values({i.strip()}), "
+                    to_update+= f":{i.strip()}, "
+
+            logger.info(f"updating {len(data)} records - stage: {stage}.")
+
+            conn.execute(text(f"""
+                INSERT INTO mercadolibre.catalog_listing ({fields})
+                VALUES({to_update})
+                ON DUPLICATE KEY UPDATE {to_update_conflict}
+            """),data)
+            logger.info("Upsert Completed.")
+
+    except Exception as e:
+        logger.error(f"Error critico en la carga masiva: {str(e)}")
+        raise e
+
+
 
 def truncate_items_data(product_status, run_procedure):
     """"""
