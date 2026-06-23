@@ -22,63 +22,102 @@ def format_mysql_timestamp(value):
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-def get_meli_catalog_ids(token, meli_ids_omitidos=None):
+def get_meli_catalog_ids(token):
     logger.info("Getting meli catalog ID's")
-    
-    meli_ids_omitidos = set(meli_ids_omitidos or [])
+
     headers = {"Authorization": f"Bearer {token}"}
 
-    user_id = requests.get(f"{API_BASE}/users/me", headers=headers).json().get("id")
+    user_res = requests.get(f"{API_BASE}/users/me", headers=headers)
+    user_res.raise_for_status()
+
+    user_id = user_res.json().get("id")
     if not user_id:
         raise Exception("Token inválido o expirado")
 
-    item_ids, offset, limit = [], 0, 50
+    item_ids = []
+    offset = 0
+    limit = 50
 
     while True:
         res = requests.get(
             f"{API_BASE}/users/{user_id}/items/search",
             headers=headers,
-            params={"offset": offset, "limit": limit}
-        ).json()
+            params={
+                "offset": offset,
+                "limit": limit
+            }
+        )
+        res.raise_for_status()
 
-        results = res.get("results", [])
+        data = res.json()
+        results = data.get("results", [])
+
+        logger.info(
+            f"Items search page offset={offset}, "
+            f"total={data.get('paging', {}).get('total')}, "
+            f"results={len(results)}"
+        )
+
         if not results:
             break
 
-        item_ids += [x for x in results if x not in meli_ids_omitidos]
+        # Ya no omitimos meli_ids existentes.
+        item_ids.extend(results)
 
         offset += limit
-        if offset >= res.get("paging", {}).get("total", 0):
+
+        if offset >= data.get("paging", {}).get("total", 0):
             break
+
+    # Evitamos duplicados por seguridad.
+    item_ids = list(set(item_ids))
+
+    logger.info(f"Total item_ids to inspect: {len(item_ids)}")
 
     rows = []
 
     for i in range(0, len(item_ids), 20):
-        items = requests.get(
+        batch_ids = item_ids[i:i + 20]
+
+        items_res = requests.get(
             f"{API_BASE}/items",
             headers=headers,
             params={
-                "ids": ",".join(item_ids[i:i + 20]),
-                "attributes": "id,catalog_product_id,date_created"
+                "ids": ",".join(batch_ids),
+                "attributes": "id,catalog_product_id,date_created,status"
             }
-        ).json()
+        )
+        items_res.raise_for_status()
+
+        items = items_res.json()
 
         for item in items:
             body = item.get("body", {})
             catalog_product_id = body.get("catalog_product_id")
 
-            if catalog_product_id:
-                rows.append({
-                    "meli_id": body.get("id"),
-                    "catalog_product_id": catalog_product_id,
-                    "created_at": format_mysql_timestamp(body.get("date_created"))
-                })
+            if not catalog_product_id:
+                continue
+
+            rows.append({
+                "meli_id": body.get("id"),
+                "catalog_product_id": catalog_product_id,
+                "created_at": format_mysql_timestamp(body.get("date_created"))            
+            })
+
+    logger.info(f"Total rows with catalog_product_id to load/upsert: {len(rows)}")
+
+    debug_target = [r for r in rows if r.get("meli_id") == "MLA3501100662"]
+    logger.info(f"Debug MLA3501100662 rows: {debug_target}")
+
     return rows
 
+
 def update_meli_catalog():
-    current_list = [i.get('meli_id') for i in get_method(query)]
-    data = get_meli_catalog_ids(token, meli_ids_omitidos=current_list)
-    logger.info(f"New rows to add in catalog listing table: {len(data)}")
-    if data != []:
-        fields = 'meli_id, catalog_product_id, created_at'    
-        load_data(fields, data, stage=None)
+    data = get_meli_catalog_ids(token)
+
+    logger.info(f"Rows to load/upsert in catalog listing table: {len(data)}")
+
+    if data:
+        fields = "meli_id, catalog_product_id, created_at"
+        result = load_data(fields, data, stage=None)
+        logger.info(f"load_data result: {result}")
