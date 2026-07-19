@@ -1,14 +1,28 @@
 import asyncio
 import aiohttp
+import json
 from datetime import datetime
 from app.utils.logger import logger
 from app.service.secrets import meli_secrets
+from app.service.database import get_method
+
+SCHEMA_INVENTORY= "app_import"
+PRODUCTS_TABLE= "product_catalog_sync"
+
+
+def variation_metadata(variation):
+    meta = {}
+    for attr in variation.get("attribute_combinations", []):
+        meta[attr["id"]] = attr.get("value_name")
+    for attr in variation.get("attributes", []):
+        meta.setdefault(attr["id"], attr.get("value_name"))
+    return meta
 
 
 def obtain_items():
     """
     Retorna el estado completo de los items publicados:
-    meli_id, stock, variation_quantity, status, reason, remedy y updated_at.
+    meli_id, stock, status, reason, remedy y updated_at.
     """
 
     token = meli_secrets()
@@ -34,57 +48,20 @@ def obtain_items():
                 connector=connector
             ) as session:
 
-                # ==========================================================
-                # 1. USER
-                # ==========================================================
 
-                response, _ = await fetch_json(
-                    session,
-                    "https://api.mercadolibre.com/users/me"
-                )
+                query = {
+                    'q_columns': [
+                        'a.meli_id',
+                    ],
+                    'q_from':f'FROM {SCHEMA_INVENTORY}.{PRODUCTS_TABLE} as a',
+                    'q_where': f'WHERE a.meli_id is not null',
+                }
 
-                if not response:
-                    return []
+                item_ids = [i.get('meli_id') for i in get_method(query)]
 
-                user_id = response["id"]
+                print(len(item_ids))
 
-                # ==========================================================
-                # 2. SEARCH ITEMS (SCAN)
-                # ==========================================================
-
-                item_ids = []
-                scroll_id = None
-
-                url_search = f"https://api.mercadolibre.com/users/{user_id}/items/search"
-
-                logger.info("Iniciando búsqueda de items con modo scan...")
-
-                while True:
-
-                    params = {"search_type": "scan"}
-
-                    if scroll_id:
-                        params["scroll_id"] = scroll_id
-
-                    data, _ = await fetch_json(
-                        session,
-                        url_search,
-                        params=params
-                    )
-
-                    if not data or not data.get("results"):
-                        break
-
-                    item_ids.extend(data["results"])
-
-                    scroll_id = data.get("scroll_id")
-
-                    if not scroll_id:
-                        break
-
-                logger.info(f"Total de IDs recuperados: {len(item_ids)}")
-
-                current_time = datetime.now()
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 # ==========================================================
                 # 3. MULTIGET ITEMS
@@ -109,17 +86,29 @@ def obtain_items():
                     for item_info in items_data:
 
                         body = item_info.get("body", {})
-
                         item_id = body.get("id")
                         product_name = body.get("title")
                         stock = body.get("available_quantity", 0)
                         status = body.get("status")
-
-                        # NEW FIELD
-                        variation_quantity = len(body.get("variations", []))
-
                         reason = "None"
                         remedy = "None"
+                        variations = body.get("variations", [])
+                        variants_data=json.dumps('None')
+                        if variations:
+                            total_stock = sum(v.get("available_quantity", 0) for v in variations)
+                            variants_data ={
+                                    "product_stock": total_stock,
+                                    "variants": []}
+                            
+                            for variation in variations:
+                                variants_data["variants"].append({
+                                    "variant_id": variation["id"],
+                                    "stock": variation.get("available_quantity"),
+                                    "price": variation.get("price"),
+                                    "metadata": variation_metadata(variation)
+                                })
+
+                            variants_data = json.dumps(variants_data)
 
                         # ==================================================
                         # 4. MODERATION
@@ -153,17 +142,17 @@ def obtain_items():
                                     )
 
                         final_results.append({
-                            "meli_id": item_id,
-                            "product_name": product_name,
-                            "stock": stock,
-                            "variation_quantity": variation_quantity,
-                            "status": status,
-                            "reason": reason[:255],
-                            "remedy": remedy[:255],
-                            "updated_at": current_time
+                            "meli_id": {"value":item_id, "type":"char(255)"},
+                            "product_name": {"value":product_name, "type":"char(255)"},
+                            "stock": {"value":stock, "type":"int signed"},
+                            "status": {"value":status, "type":"char(255)"},
+                            "reason": {"value":reason[:255], "type":"char(255)"},
+                            "remedy": {"value":remedy[:255], "type":"char(255)"},
+                            "updated_at": {"value":current_time, "type":"datetime"} ,
+                            "variants": {"value":variants_data, "type":"json"} 
                         })
-
-            return final_results
+                print(len(final_results))
+                return final_results
 
         except Exception as e:
             logger.error(f"Error crítico en proceso de auditoría: {e}")

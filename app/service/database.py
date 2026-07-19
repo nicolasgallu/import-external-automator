@@ -45,6 +45,10 @@ def get_method(data):
         logger.info("Data extraction completed.")
         return data
  
+
+
+
+
 def load_data(fields:str, data:list, stage:str):
     """"""
     try:
@@ -77,7 +81,6 @@ def load_data(fields:str, data:list, stage:str):
         raise e
 
 
-
 def truncate_items_data(product_status, run_procedure):
     """"""
     with engine.begin() as conn:
@@ -97,6 +100,7 @@ def truncate_items_data(product_status, run_procedure):
             conn.execute(text(f"""CALL {SCHMA_FOLDER}.update_meli_status()"""))
             logger.info("Procedures Completed.")
 
+
 def get_item_actives():
     """"""
     with engine.begin() as conn:
@@ -107,6 +111,7 @@ def get_item_actives():
         )
         data = [dict(row).get('meli_id') for row in result.mappings()]
         return data
+
 
 def load_item_performance(data):
     """"""
@@ -130,6 +135,7 @@ def load_item_performance(data):
         conn.execute(text(f"CALL {SCHMA_MELI}.refresh_performance_data()"))
         logger.info("Load Completed")
 
+
 def get_items_without_folder():
     """"""
     with engine.begin() as conn:
@@ -147,6 +153,7 @@ def get_items_without_folder():
         else:
             logger.info("There are not items to process")
             return None
+
 
 def load_item_folder_url(data_list):
     """"""
@@ -177,3 +184,97 @@ def load_item_folder_url(data_list):
     except Exception as e:
         logger.error(f"Error critico en la carga masiva: {str(e)}")
         raise e
+
+import uuid
+
+def update_method(rows: list[dict], schema: str, table: str):
+    """
+    rows = [
+        {
+            "id": {"value": 1, "type": "integer"},
+            "name": {"value": "John", "type": "varchar"},
+            "active": {"value": True, "type": "boolean"}
+        },
+        {
+            "id": {"value": 2, "type": "integer"},
+            "name": {"value": "Jane", "type": "varchar"},
+            "active": {"value": False, "type": "boolean"}
+        }
+    ]
+    """
+
+    if not rows:
+        return
+
+    try:
+        # Assume every row has the same schema
+        fields = list(rows[0].keys())
+        id_field = fields[0]
+        temp_table = f"tmp_{table}_{uuid.uuid4().hex[:8]}"
+
+        columns = []
+
+        for field in fields:
+            value_type = rows[0][field]["type"]
+            columns.append(f"{field} {value_type}")
+
+        create_temp_query = text(f"""
+            CREATE TEMPORARY TABLE {temp_table} (
+                {", ".join(columns)}
+            )
+        """)
+
+        params_list = []
+
+        for row in rows:
+            params = {}
+            for field in fields:
+                params[field] = row[field]["value"]
+            params_list.append(params)
+
+
+        logger.info(f"Updating {len(params_list)} records in {schema}.{table}")
+
+
+        with engine.begin() as conn:
+
+            # 1. Create temporary table
+            conn.execute(create_temp_query)
+
+            # 2. Insert rows into temp table
+            insert_query = text(f"""
+                INSERT INTO {temp_table}
+                ({", ".join(fields)})
+                VALUES
+                ({", ".join([f":{field}" for field in fields])})
+            """)
+
+            conn.execute(insert_query, params_list)
+
+            # 3. Update target table from temp table
+            update_clauses = []
+            
+            for field in fields[1:]:
+                update_clauses.append(f"{field} = VALUES({field})")
+            
+            merge_query = text(f"""
+                INSERT INTO {schema}.{table}
+                ({", ".join(fields)})
+                SELECT
+                    {", ".join(fields)}
+                FROM {temp_table}
+                ON DUPLICATE KEY UPDATE
+                    {", ".join(update_clauses)}
+            """)
+            
+            result = conn.execute(merge_query)
+            logger.info(f"Updated {result.rowcount} rows")
+            conn.execute(text(f"DROP TEMPORARY TABLE {temp_table}"))
+            
+        logger.info("Bulk update completed.")
+
+    except Exception as e:
+        logger.error(
+            f"Error during bulk update: {e}"
+        )
+        raise
