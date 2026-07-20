@@ -1,24 +1,15 @@
 import requests
 from datetime import datetime, timezone
 from app.utils.logger import logger
-from app.service.database import get_method, load_data
+from app.service.database import load_data
 from app.service.secrets import meli_secrets
 
 
 API_BASE = "https://api.mercadolibre.com"
-token = meli_secrets()
-schema_mercadolibre = "mercadolibre"
-query = {
-        'q_columns': [
-            'meli_id'
-        ],
-        'q_from':f'FROM {schema_mercadolibre}.catalog_listing',
-    }
 
 def format_mysql_timestamp(value):
     if not value:
         return None
-
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -106,13 +97,11 @@ def get_meli_catalog_ids(token):
 
     logger.info(f"Total rows with catalog_product_id to load/upsert: {len(rows)}")
 
-    debug_target = [r for r in rows if r.get("meli_id") == "MLA3501100662"]
-    logger.info(f"Debug MLA3501100662 rows: {debug_target}")
-
     return rows
 
 
 def update_meli_catalog():
+    token = meli_secrets()
     data = get_meli_catalog_ids(token)
 
     logger.info(f"Rows to load/upsert in catalog listing table: {len(data)}")
@@ -120,4 +109,3 @@ def update_meli_catalog():
     if data:
         fields = "meli_id, catalog_product_id, created_at"
         result = load_data(fields, data, stage=None)
-        logger.info(f"load_data result: {result}")

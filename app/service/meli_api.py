@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from app.utils.logger import logger
 from app.service.secrets import meli_secrets
-from app.service.database import get_method, update_method
+from app.service.database import get_method, update_method, run_procedure
 from app.settings.config import SCHEMA_INVENTORY, PRODUCTS_TABLE
 
 
@@ -66,6 +66,7 @@ def product_status_sync():
                 for i in range(0, len(item_ids), 20):
 
                     chunk = item_ids[i:i + 20]
+                    logger.info(f"Processing Chunk: {chunk}")
 
                     async with semaphore:
                         items_data, _ = await fetch_json(
@@ -144,7 +145,8 @@ def product_status_sync():
                             "variants": {"value":variants_data, "type":"json"} 
                         })
 
-                update_method(final_results)
+                update_method(final_results, "mercadolibre", "product_status")
+                run_procedure("app_import", "update_meli_status")
                 logger.info("Process Completed.")
                 return
             

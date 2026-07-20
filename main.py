@@ -1,7 +1,7 @@
 import asyncio
 from app.service.meli_api import product_status_sync
 from app.service.database import get_items_without_folder, load_item_folder_url
-from app.service.meli_performance import get_performance
+from app.service.meli_performance import run_get_performance
 from app.service.meli_listing_catalog import update_meli_catalog
 from app.service.google_folders import run_drive_automation
 from app.service.prepublish_api import prepublish_call_ai
@@ -11,10 +11,10 @@ product_status_sync()
 prepublish_call_ai()
 
 if RUN_PERFORMANCE == 1:
-    get_performance()
+    run_get_performance()
 
 if RUN_CATALOG_LIST == 1:
-    update_meli_catalog()
+   update_meli_catalog()
 
 if RUN_FOLDERS == 1:
     items_list = get_items_without_folder()

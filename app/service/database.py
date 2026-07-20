@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, text, insert
 from google.cloud.sql.connector import Connector
 from app.utils.logger import logger
-from app.settings.config import INSTANCE_DB, USER_DB, PASSWORD_DB, NAME_DB, SCHMA_FOLDER, SCHMA_MELI, SCHMA_APP
+from app.settings.config import INSTANCE_DB, USER_DB, PASSWORD_DB, NAME_DB, SCHEMA_INVENTORY
 
 def getconn():
     connector = Connector() 
@@ -81,49 +81,13 @@ def load_data(fields:str, data:list, stage:str):
         raise e
 
 
-
-def get_item_actives():
-    """"""
-    with engine.begin() as conn:
-        logger.info("Getting active published products")
-        result = conn.execute(
-            text(f"""SELECT distinct meli_id from {SCHMA_APP}.product_catalog_sync 
-                WHERE status = 'active' and meli_id is not null""")
-        )
-        data = [dict(row).get('meli_id') for row in result.mappings()]
-        return data
-
-
-def load_item_performance(data):
-    """"""
-    with engine.begin() as conn:
-        logger.info("Starting load of items performance")
-        conn.execute(
-            text(f"""
-                INSERT INTO {SCHMA_MELI}.performance_raw 
-                (meli_id, entity_type, score, level, level_wording, calculated_at, updated_at, buckets)
-                VALUES (:meli_id, :entity_type, :score, :level, :level_wording, :calculated_at, :updated_at, :buckets) 
-                ON DUPLICATE KEY UPDATE 
-                entity_type = VALUES(entity_type),
-                score = VALUES(score),
-                level = VALUES(level),
-                level_wording = VALUES(level_wording),
-                calculated_at = VALUES(calculated_at),
-                updated_at = VALUES(updated_at),
-                buckets = VALUES(buckets)
-            """), data
-        )
-        conn.execute(text(f"CALL {SCHMA_MELI}.refresh_performance_data()"))
-        logger.info("Load Completed")
-
-
 def get_items_without_folder():
     """"""
     with engine.begin() as conn:
         logger.info("Extracting items with stock from DB")
         result = conn.execute(
             text(f"""
-                SELECT id FROM {SCHMA_FOLDER}.product_catalog_sync
+                SELECT id FROM {SCHEMA_INVENTORY}.product_catalog_sync
                 WHERE drive_url is null and stock >0;
             """)
         )
@@ -144,7 +108,7 @@ def load_item_folder_url(data_list):
             # 1. Crear tabla temporal
             logger.info("Paso 1/3: Creando tabla temporal en el motor de base de datos.")
             conn.execute(text(f"""
-                CREATE TEMPORARY TABLE {SCHMA_FOLDER}.temp_drive_urls (
+                CREATE TEMPORARY TABLE {SCHEMA_INVENTORY}.temp_drive_urls (
                     item_id INT, 
                     drive_url VARCHAR(255),
                     PRIMARY KEY (item_id)
@@ -152,14 +116,14 @@ def load_item_folder_url(data_list):
             """))
             # 2. Insertar datos en la tabla temporal
             conn.execute(text(f"""
-                INSERT INTO {SCHMA_FOLDER}.temp_drive_urls (item_id, drive_url) 
+                INSERT INTO {SCHEMA_INVENTORY}.temp_drive_urls (item_id, drive_url) 
                 VALUES (:item_id, :drive_url)
             """), data_list)
             # 3. Update masivo con JOIN
             logger.info("Paso 3/3: Ejecutando operacion UPDATE JOIN sobre la tabla destino.")
             conn.execute(text(f"""
-                UPDATE {SCHMA_FOLDER}.product_catalog_sync AS target
-                INNER JOIN {SCHMA_FOLDER}.temp_drive_urls AS source ON target.id = source.item_id
+                UPDATE {SCHEMA_INVENTORY}.product_catalog_sync AS target
+                INNER JOIN {SCHEMA_INVENTORY}.temp_drive_urls AS source ON target.id = source.item_id
                 SET target.drive_url = source.drive_url
             """))
     except Exception as e:
@@ -253,10 +217,21 @@ def update_method(rows: list[dict], schema: str, table: str):
             conn.execute(text(f"DROP TEMPORARY TABLE {temp_table}"))
             
         logger.info("Bulk update completed.")
-        conn.execute(text(f"""CALL {SCHMA_FOLDER}.update_meli_status()"""))
 
     except Exception as e:
         logger.error(
             f"Error during bulk update: {e}"
         )
         raise
+
+
+def run_procedure(schema, procedure_name):
+    """"""
+    logger.info(f"Running Procedure {schema}.{procedure_name}()")
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(f"CALL {schema}.{procedure_name}()"))
+    except Exception as e:
+        logger.error(f"Error running procedure: {str(e)}")
+        raise e
+    

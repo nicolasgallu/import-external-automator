@@ -15,7 +15,7 @@ def prepublish_call_ai():
     }
 
     item_ids = [i.get('id') for i in get_method(query)]
-    logger.info(f"Calling Prepublish for {len(item_ids)}")
+    logger.info(f"Calling Prepublish for {len(item_ids)} items.")
 
     for i,id in enumerate(item_ids):
         pre_publish= {

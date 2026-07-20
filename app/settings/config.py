@@ -10,9 +10,8 @@ INSTANCE_DB=os.getenv("INSTANCE_DB")
 USER_DB=os.getenv("USER_DB")
 PASSWORD_DB=os.getenv("PASSWORD_DB")
 NAME_DB=os.getenv("NAME_DB")
-SCHMA_FOLDER=os.getenv("SCHMA_FOLDER")
 SCHMA_MELI=os.getenv("SCHMA_MELI")
-SCHMA_APP=os.getenv("SCHMA_APP")
+
 
 
 SCOPES=os.getenv("SCOPES")
