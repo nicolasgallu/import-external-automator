@@ -93,14 +93,14 @@ def product_status_sync():
                             total_stock = sum(v.get("available_quantity", 0) for v in variations)
                             variants_data ={
                                     "product_stock": total_stock,
-                                    "variants": []}
+                                    "variations": []}
                             
                             for variation in variations:
-                                variants_data["variants"].append({
-                                    "variant_id": variation["id"],
-                                    "stock": variation.get("available_quantity"),
+                                variants_data["variations"].append({
+                                    "id": variation["id"],
+                                    "available_quantity": variation.get("available_quantity"),
                                     "price": variation.get("price"),
-                                    "metadata": variation_metadata(variation)
+                                    "attribute_combinations": [variation_metadata(variation)]
                                 })
 
                             variants_data = json.dumps(variants_data)
