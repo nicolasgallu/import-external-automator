@@ -9,11 +9,18 @@ from app.settings.config import SCHEMA_INVENTORY, PRODUCTS_TABLE
 
 
 def variation_metadata(variation):
-    meta = {}
+    meta = {
+        "attribute_combinations": variation.get("attribute_combinations", []),
+        "attributes": variation.get("attributes", []),
+        "values": {},
+    }
+
     for attr in variation.get("attribute_combinations", []):
-        meta[attr["id"]] = attr.get("value_name")
+        meta["values"][attr["id"]] = attr.get("value_name")
+
     for attr in variation.get("attributes", []):
-        meta.setdefault(attr["id"], attr.get("value_name"))
+        meta["values"].setdefault(attr["id"], attr.get("value_name"))
+
     return meta
 
 
