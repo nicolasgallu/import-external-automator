@@ -4,10 +4,8 @@ import json
 from datetime import datetime
 from app.utils.logger import logger
 from app.service.secrets import meli_secrets
-from app.service.database import get_method
-
-SCHEMA_INVENTORY= "app_import"
-PRODUCTS_TABLE= "product_catalog_sync"
+from app.service.database import get_method, update_method
+from app.settings.config import SCHEMA_INVENTORY, PRODUCTS_TABLE
 
 
 def variation_metadata(variation):
@@ -19,12 +17,12 @@ def variation_metadata(variation):
     return meta
 
 
-def obtain_items():
+def product_status_sync():
     """
     Retorna el estado completo de los items publicados:
     meli_id, stock, status, reason, remedy y updated_at.
     """
-
+    logger.info("Starting Product Status Sync Process..")
     token = meli_secrets()
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -58,9 +56,7 @@ def obtain_items():
                 }
 
                 item_ids = [i.get('meli_id') for i in get_method(query)]
-
-                print(len(item_ids))
-
+                logger.info(f"Products Published in Mercadolibre: {len(item_ids)}")
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 # ==========================================================
@@ -87,8 +83,6 @@ def obtain_items():
 
                         body = item_info.get("body", {})
                         item_id = body.get("id")
-                        product_name = body.get("title")
-                        stock = body.get("available_quantity", 0)
                         status = body.get("status")
                         reason = "None"
                         remedy = "None"
@@ -143,17 +137,17 @@ def obtain_items():
 
                         final_results.append({
                             "meli_id": {"value":item_id, "type":"char(255)"},
-                            "product_name": {"value":product_name, "type":"char(255)"},
-                            "stock": {"value":stock, "type":"int signed"},
                             "status": {"value":status, "type":"char(255)"},
                             "reason": {"value":reason[:255], "type":"char(255)"},
                             "remedy": {"value":remedy[:255], "type":"char(255)"},
                             "updated_at": {"value":current_time, "type":"datetime"} ,
                             "variants": {"value":variants_data, "type":"json"} 
                         })
-                print(len(final_results))
-                return final_results
 
+                update_method(final_results)
+                logger.info("Process Completed.")
+                return
+            
         except Exception as e:
             logger.error(f"Error crítico en proceso de auditoría: {e}")
             return []

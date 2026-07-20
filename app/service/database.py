@@ -81,25 +81,6 @@ def load_data(fields:str, data:list, stage:str):
         raise e
 
 
-def truncate_items_data(product_status, run_procedure):
-    """"""
-    with engine.begin() as conn:
-        conn.execute(text(f"TRUNCATE TABLE {SCHMA_MELI}.product_status"))
-        logger.info(f"Truncate of {SCHMA_MELI}.product_status Done.")
-        logger.info("Starting Data Load")
-        conn.execute(
-            text(f"""
-                INSERT INTO {SCHMA_MELI}.product_status (meli_id, product_name, stock, status, reason, remedy, variation_quantity, updated_at)
-                VALUES (:meli_id, :product_name, :stock, :status, :reason, :remedy, :variation_quantity, :updated_at)
-            """),
-            product_status
-        )
-        logger.info("Load Completed")
-        if run_procedure == 1:
-            logger.info("Running Procedures.")
-            conn.execute(text(f"""CALL {SCHMA_FOLDER}.update_meli_status()"""))
-            logger.info("Procedures Completed.")
-
 
 def get_item_actives():
     """"""
@@ -272,6 +253,7 @@ def update_method(rows: list[dict], schema: str, table: str):
             conn.execute(text(f"DROP TEMPORARY TABLE {temp_table}"))
             
         logger.info("Bulk update completed.")
+        conn.execute(text(f"""CALL {SCHMA_FOLDER}.update_meli_status()"""))
 
     except Exception as e:
         logger.error(
