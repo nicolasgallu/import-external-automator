@@ -107,7 +107,7 @@ def product_status_sync():
                                     "id": variation["id"],
                                     "available_quantity": variation.get("available_quantity"),
                                     "price": variation.get("price"),
-                                    "attribute_combinations": [variation_metadata(variation)]
+                                    "attribute_combinations": variation.get("attribute_combinations", [])
                                 })
 
                             variants_data = json.dumps(variants_data)
