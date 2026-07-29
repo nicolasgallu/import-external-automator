@@ -13,6 +13,7 @@ def format_mysql_timestamp(value):
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
+
 def get_meli_catalog_ids(token):
     logger.info("Getting meli catalog ID's")
 
@@ -26,41 +27,56 @@ def get_meli_catalog_ids(token):
         raise Exception("Token inválido o expirado")
 
     item_ids = []
-    offset = 0
-    limit = 50
+    limit = 100
+    scroll_id = None
 
     while True:
+        params = {
+            "search_type": "scan",
+            "limit": limit
+        }
+
+        if scroll_id:
+            params["scroll_id"] = scroll_id
+
+        logger.info(
+            f"Requesting items search (scroll_id={scroll_id}, limit={limit})"
+        )
+
         res = requests.get(
             f"{API_BASE}/users/{user_id}/items/search",
             headers=headers,
-            params={
-                "offset": offset,
-                "limit": limit
-            }
+            params=params
         )
+
+        if res.status_code != 200:
+            logger.error(f"HTTP {res.status_code}")
+            logger.error(res.text)
+
         res.raise_for_status()
 
         data = res.json()
+
         results = data.get("results", [])
 
-        logger.info(
-            f"Items search page offset={offset}, "
-            f"total={data.get('paging', {}).get('total')}, "
-            f"results={len(results)}"
-        )
-
         if not results:
+            logger.info("No more items returned.")
             break
 
-        # Ya no omitimos meli_ids existentes.
         item_ids.extend(results)
 
-        offset += limit
+        logger.info(
+            f"Fetched {len(results)} items. "
+            f"Total collected: {len(item_ids)}"
+        )
 
-        if offset >= data.get("paging", {}).get("total", 0):
+        scroll_id = data.get("scroll_id")
+
+        if not scroll_id:
+            logger.info("No scroll_id returned. Finished pagination.")
             break
 
-    # Evitamos duplicados por seguridad.
+    # Remove duplicates just in case
     item_ids = list(set(item_ids))
 
     logger.info(f"Total item_ids to inspect: {len(item_ids)}")
@@ -78,6 +94,11 @@ def get_meli_catalog_ids(token):
                 "attributes": "id,catalog_product_id,date_created,status"
             }
         )
+
+        if items_res.status_code != 200:
+            logger.error(f"HTTP {items_res.status_code}")
+            logger.error(items_res.text)
+
         items_res.raise_for_status()
 
         items = items_res.json()
@@ -92,13 +113,16 @@ def get_meli_catalog_ids(token):
             rows.append({
                 "meli_id": body.get("id"),
                 "catalog_product_id": catalog_product_id,
-                "created_at": format_mysql_timestamp(body.get("date_created"))            
+                "created_at": format_mysql_timestamp(
+                    body.get("date_created")
+                )
             })
 
-    logger.info(f"Total rows with catalog_product_id to load/upsert: {len(rows)}")
+    logger.info(
+        f"Total rows with catalog_product_id to load/upsert: {len(rows)}"
+    )
 
     return rows
-
 
 def update_meli_catalog():
     token = meli_secrets()
@@ -108,4 +132,4 @@ def update_meli_catalog():
 
     if data:
         fields = "meli_id, catalog_product_id, created_at"
-        result = load_data(fields, data, stage=None)
+        load_data(fields, data, stage=None)
