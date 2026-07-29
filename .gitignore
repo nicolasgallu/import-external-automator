@@ -2,3 +2,4 @@ venv-external_automator/
 .env
 **/__pycache__
 venv-import-automator/
+test/

@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 import json
+import requests
 from datetime import datetime
 from app.utils.logger import logger
 from app.service.secrets import meli_secrets
@@ -33,6 +34,11 @@ def product_status_sync():
     token = meli_secrets()
     headers = {"Authorization": f"Bearer {token}"}
 
+
+    res = requests.get("https://api.mercadolibre.com//users/me",headers=headers)
+    data = res.json()
+    seller_id = data.get("id")
+
     async def fetch_json(session, url, params=None):
         async with session.get(url, params=params) as resp:
             if resp.status == 200:
@@ -58,7 +64,7 @@ def product_status_sync():
                     'q_columns': [
                         'a.meli_id',
                     ],
-                    'q_from':f'FROM {SCHEMA_INVENTORY}.{PRODUCTS_TABLE} as a',
+                    'q_from':f'FROM {SCHEMA_INVENTORY}.{PRODUCTS_TABLE} as a',    
                     'q_where': f'WHERE a.meli_id is not null',
                 }
 
@@ -92,10 +98,27 @@ def product_status_sync():
                         body = item_info.get("body", {})
                         item_id = body.get("id")
                         status = body.get("status")
-                        reason = "None"
-                        remedy = "None"
+                        reason = None
+                        remedy = None
                         variations = body.get("variations", [])
-                        variants_data=json.dumps('None')
+                        variants_data= None
+                        catalog_product_id = body.get("catalog_product_id")
+                        catalog_list = None
+                        catalog_items = []
+
+                        if catalog_product_id:
+                            async with semaphore:
+                                catalog_data, _ = await fetch_json(
+                                    session,
+                                    f"https://api.mercadolibre.com/products/{catalog_product_id}/items"
+                                )
+                            if catalog_data:
+                                catalog_items = catalog_data.get("results", [])
+
+                        if catalog_items:
+                            catalog_list = [{'id': catalog.get('item_id')} for catalog in catalog_items if catalog.get('seller_id') == seller_id]
+                            catalog_list = json.dumps(catalog_list) 
+
                         if variations:
                             total_stock = sum(v.get("available_quantity", 0) for v in variations)
                             variants_data ={
@@ -146,10 +169,11 @@ def product_status_sync():
                         final_results.append({
                             "meli_id": {"value":item_id, "type":"char(255)"},
                             "status": {"value":status, "type":"char(255)"},
-                            "reason": {"value":reason[:255], "type":"char(255)"},
-                            "remedy": {"value":remedy[:255], "type":"char(255)"},
-                            "updated_at": {"value":current_time, "type":"datetime"} ,
-                            "variants": {"value":variants_data, "type":"json"} 
+                            "reason": {"value":reason, "type":"char(255)"},
+                            "remedy": {"value":remedy, "type":"char(255)"},
+                            "updated_at": {"value":current_time, "type":"datetime"},
+                            "variants": {"value":variants_data, "type":"json"},
+                            "listing_catalog": {"value":catalog_list, "type":"text"},
                         })
 
                 update_method(final_results, "mercadolibre", "product_status")
