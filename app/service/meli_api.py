@@ -173,7 +173,7 @@ def product_status_sync():
                             "remedy": {"value":remedy, "type":"char(255)"},
                             "updated_at": {"value":current_time, "type":"datetime"},
                             "variants": {"value":variants_data, "type":"json"},
-                            "listing_catalog": {"value":catalog_list, "type":"text"},
+                            "listing_catalog": {"value":catalog_list, "type":"json"},
                         })
 
                 update_method(final_results, "mercadolibre", "product_status")
