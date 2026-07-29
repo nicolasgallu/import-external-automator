@@ -4,7 +4,7 @@ from app.service.database import get_items_without_folder, load_item_folder_url
 from app.service.meli_performance import run_get_performance
 from app.service.google_folders import run_drive_automation
 from app.service.prepublish_api import prepublish_call_ai
-from app.settings.config import RUN_FOLDERS, RUN_PERFORMANCE, RUN_CATALOG_LIST
+from app.settings.config import RUN_FOLDERS, RUN_PERFORMANCE
 
 product_status_sync()
 prepublish_call_ai()
