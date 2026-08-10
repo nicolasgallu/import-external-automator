@@ -11,7 +11,7 @@ def prepublish_call_ai():
             'id',
         ],
         'q_from':f'FROM {SCHEMA_INVENTORY}.{PRODUCTS_TABLE}',
-        'q_where': f'WHERE meli_id is null and stock > 0 and (product_name_meli is null or description is null)',
+        'q_where': f'WHERE meli_id is null and stock > 0 and (product_name_meli is null or description is null or brand is null or model is null)',
     }
 
     item_ids = [i.get('id') for i in get_method(query)]
