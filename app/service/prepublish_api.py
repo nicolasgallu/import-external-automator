@@ -16,9 +16,8 @@ def prepublish_call_ai():
     item_ids = [i.get('id') for i in get_method(query)]
     logger.info(f"Calling Prepublish for {len(item_ids)} items.")
 
-    for i, id in enumerate(item_ids):
+    for id in item_ids:
         logger.info(f'requesting prepublish for: {id}')
         pre_publish= {"event_type":"pre-publish", "item_id": id,"secret": SECRET}
         requests.post(url=WEBHOOK_PUBLICATIONS, json=pre_publish)
-        if i % 4 == 0:
-            time.sleep(8)
+        time.sleep(8)
