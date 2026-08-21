@@ -23,6 +23,6 @@ def prepublish_call_ai():
             "item_id": id,
             "secret": SECRET
         }
-        if i %2 == 0:
-            time.sleep(5)
         requests.post(url=WEBHOOK_PUBLICATIONS, json=pre_publish)
+        if i % 2 == 0:
+            time.sleep(5)
