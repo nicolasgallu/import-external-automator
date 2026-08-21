@@ -4,25 +4,21 @@ import time
 import requests
 from app.utils.logger import logger
 
-
 def prepublish_call_ai():
     query = {
         'q_columns': [
             'id',
         ],
         'q_from':f'FROM {SCHEMA_INVENTORY}.{PRODUCTS_TABLE}',
-        'q_where': f'WHERE meli_id is null and stock > 0 and (product_name_meli is null or description is null or brand is null or model is null)',
+        'q_where': f"WHERE meli_id is null and stock > 0 and (product_name_meli IS NULL OR product_name_meli = '' OR description IS NULL OR description = '' OR brand IS NULL OR brand = '' OR model IS NULL OR model = '')",
     }
 
     item_ids = [i.get('id') for i in get_method(query)]
     logger.info(f"Calling Prepublish for {len(item_ids)} items.")
 
-    for i,id in enumerate(item_ids):
-        pre_publish= {
-            "event_type":"pre-publish", 
-            "item_id": id,
-            "secret": SECRET
-        }
+    for i, id in enumerate(item_ids):
+        logger.info(f'requesting prepublish for: {id}')
+        pre_publish= {"event_type":"pre-publish", "item_id": id,"secret": SECRET}
         requests.post(url=WEBHOOK_PUBLICATIONS, json=pre_publish)
-        if i % 2 == 0:
-            time.sleep(5)
+        if i % 4 == 0:
+            time.sleep(8)
